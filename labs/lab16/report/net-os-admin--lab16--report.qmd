@@ -13,184 +13,239 @@ author:
       address: ул. Очаковское шоссе, д. 9А
 
 ## Title
-title: "Отчёт по лабораторной работе"
+title: "Отчёт по лабораторной работе 16"
 subtitle: "Администрирование сетевых подсистем"
 license: "CC BY"
 ---
 
 # Цель работы
 
-
+Получить навыки работы с программным средством Fail2ban для обеспечения базовой защиты от атак типа «brute force».
 
 # Задание
 
-
+1. Установите и настройте Fail2ban для отслеживания работы установленных на сер-
+вере служб 
+2. Проверьте работу Fail2ban посредством попыток несанкционированного доступа
+с клиента на сервер через SSH 
+3. Напишите скрипт для Vagrant, фиксирующий действия по установке и настройке
+Fail2ban 
 
 # Теоретическое введение
 
-
+Одно из решений по защите узла сети от несанкционированного доступа и атак типа
+«brute force» (в частности, подбора паролей администратора методом полного перебо-
+ра) — использование Fail2ban [1]. Данное программное средство отслеживает сетевую
+активность на портах узла путём сканирования текстовых лог-файлов. При выявле-
+нии программой неадекватной активности какого-то узла его IP-адрес помещается
+в чёрный список, а все пакеты с этого адреса блокируются. Блокировка настраивается
+путём внесения изменений в правила межсетевого экрана.
+Файл /etc/fail2ban/fail2ban.conf содержит настройки запуска процес-
+са Fail2ban. Основной файл конфигурации конкретных служб в Fail2ban —
+/etc/fail2ban/jail.conf, настройки для локального узла должны быть разме-
+щены в файле NAMEFILE.local в каталоге /etc/fail2ban/jail.d, конфигурации для
+работы с различными службами размещаются в отдельных подкаталогах и файлах
+в каталоге /etc/fail2ban/.
+Каждый конфигурационный файл Fail2ban имеет секции, каждая из которых опи-
+сывает определённую службу и тип атаки.
+Базовые правила fail2ban в конфигурационном файле:
+– ignoreip — не блокировать IP-адреса из этого списка; несколько IP-адресов разде-
+ляются пробелами;
+– bantime — время блокировки в секундах (по умолчанию — 600, т.е. 10 минут); для
+постоянного блокирования используется любое отрицательное число;
+– findtime — длительность интервала времени в секундах, в течение которого
+fail2ban отслеживает подозрительную активность (по умолчанию — 10 минут);
+– maxretry — количество подозрительных совпадений, после которых IP-адрес блоки-
+руется (по умолчанию — 3 попытки).
 
 # Выполнение лабораторной работы
 
-## 
+## Защита с помощью Fail2ban
 
-(см. рис. @fig-011).
+1. На сервере установите fail2ban:
+dnf -y install fail2ban (см. рис. @fig-011).
 
-![](image/1.1.jpg){#fig-011 width=70%}
+![Установила фаил2бан](image/1.1.jpg){#fig-011 width=70%}
 
-(см. рис. @fig-012).
+2. Запустите сервер fail2ban:
+systemctl start fail2ban
+systemctl enable fail2ban (см. рис. @fig-012).
 
-![](image/1.2.jpg){#fig-012 width=70%}
+![Запустила сервер](image/1.2.jpg){#fig-012 width=70%}
 
-(см. рис. @fig-013).
+3. В дополнительном терминале запустите просмотр журнала событий fail2ban:
+tail -f /var/log/fail2ban.log (см. рис. @fig-013).
 
-![](image/1.3.jpg){#fig-013 width=70%}
+![В доп терминале запустила просмотр журнала](image/1.3.jpg){#fig-013 width=70%}
 
-(см. рис. @fig-014).
+4. Создайте файл с локальной конфигурацией fail2ban:
+touch /etc/fail2ban/jail.d/customisation.local (см. рис. @fig-014).
 
-![](image/1.4.jpg){#fig-014 width=70%}
+![Создала файл](image/1.4.jpg){#fig-014 width=70%}
 
-([рис. @fig-015]).
+5. В файле /etc/fail2ban/jail.d/customisation.local:
+(a) задайте время блокирования на 1 час (время задаётся в секундах):
+[DEFAULT]
+bantime = 3600
+(b) включите защиту SSH:
+#
+# SSH servers
+#
+[sshd]
+port = ssh,2022
+enabled = true
+[sshd-ddos]
+filter = sshd
+enabled = true
+[selinux-ssh]
+enabled = true ([рис. @fig-015]).
 
-![](image/1.5.jpg){#fig-015 width=70%}
+![В файле зададала время блокирования](image/1.5.jpg){#fig-015 width=70%}
 
-([рис. @fig-016]).
+6. Перезапустите fail2ban
+systemctl restart fail2ban ([рис. @fig-016]).
 
-![](image/1.6.jpg){#fig-016 width=70%}
+![Перезапустила](image/1.6.jpg){#fig-016 width=70%}
 
-([рис. @fig-017]).
+7. Посмотрите журнал событий:
+tail -f /var/log/fail2ban.log ([рис. @fig-017]).
 
-![](image/1.7.jpg){#fig-017 width=70%}
+![Просмотрела журнал событий](image/1.7.jpg){#fig-017 width=70%}
 
-([рис. @fig-018]).
+8. В файле /etc/fail2ban/jail.d/customisation.local включите защиту HTTP ([рис. @fig-018]).
 
-(image/1.8.jpg){#fig-018 width=70%}
+![Включила защиту](image/1.8.jpg){#fig-018 width=70%}
 
-([рис. @fig-019]).
+9. Перезапустите fail2ban
+systemctl restart fail2ban ([рис. @fig-019]).
 
-![](image/1.9.jpg){#fig-019 width=70%}
+![Перезапустила файилтубан](image/1.9.jpg){#fig-019 width=70%}
 
-([рис. @fig-110]).
+10. Посмотрите журнал событий:
+tail -f /var/log/fail2ban.log ([рис. @fig-110]).
 
-![](image/1.10.jpg){#fig-110 width=70%}
+![Посмотрела журнал событий](image/1.10.jpg){#fig-110 width=70%}
 
-##
+11. В файле /etc/fail2ban/jail.d/customisation.local включите защиту почты:
+#
+# Mail servers
+#
+[postfix]
+enabled = true
+[postfix-rbl]
+enabled = true
+[dovecot]
+enabled = true
+[postfix-sasl]
+enabled = true ([рис. @fig-111]).
 
-([рис. @fig-021]).
+![Включила защиту](image/1.11.jpg){#fig-111 width=70%}
 
-![](image/2.1.jpg){#fig-021 width=70%}
+12. Перезапустите fail2ban:
+systemctl restart fail2ban ([рис. @fig-112]).
 
-(см. рис. @fig-022).
+![Перезапустила фаилтубан](image/1.12.jpg){#fig-112 width=70%}
 
-![](image/2.2.jpg){#fig-022 width=70%}
+13. Посмотрите журнал событий:
+tail -f /var/log/fail2ban.log ([рис. @fig-113]).
 
-(см. рис. @fig-023).
+![Посмотрела журнал событий](image/1.13.jpg){#fig-113 width=70%}
 
-![](image/2.3.jpg){#fig-023 width=70%}
+## Проверка работы Fail2ban
 
-(см. рис. @fig-024).
+1. На сервере посмотрите статус fail2ban:
+fail2ban-client status ([рис. @fig-021]).
 
-![](image/2.4.jpg){#fig-024 width=70%}
+![На сервере посмотрела статус](image/2.1.jpg){#fig-021 width=70%}
 
-([рис. @fig-025]).
+2. Посмотрите статус защиты SSH в fail2ban:
+fail2ban-client status sshd 
 
-![](image/2.5.jpg){#fig-025 width=70%}
+3. Установите максимальное количество ошибок для SSH, равное 2:
+fail2ban-client set sshd maxretry 2 
 
-([рис. @fig-026]).
+4. С клиента попытайтесь зайти по SSH на сервер с неправильным паролем. (см. рис. @fig-024).
 
-![](image/2.6.jpg){#fig-026 width=70%}
+![Попыталась зайти по ссш](image/2.4.jpg){#fig-024 width=70%}
 
-([рис. @fig-027]).
+5. На сервере посмотрите статус защиты SSH:
+fail2ban-client status sshd
+Убедитесь, что произошла блокировка адреса клиента. ([рис. @fig-025]).
 
-![](image/2.7.jpg){#fig-027 width=70%}
+![Посмотрела статус защиты](image/2.5.jpg){#fig-025 width=70%}
 
-([рис. @fig-028]).
+6. Разблокируйте IP-адрес клиента:
+fail2ban-client set sshd unbanip <ip-адрес клиента> ([рис. @fig-026]).
 
-(image/2.8.jpg){#fig-028 width=70%}
+![Разблокировала айпи адрес](image/2.6.jpg){#fig-026 width=70%}
 
-([рис. @fig-029]).
+7. Вновь посмотрите статус защиты SSH:
+fail2ban-client status sshd
+Убедитесь, что блокировка клиента снята. ([рис. @fig-027]).
 
-![](image/2.9.jpg){#fig-029 width=70%}
+![Посмотрела статус защиты](image/2.7.jpg){#fig-027 width=70%}
 
-([рис. @fig-210]).
+8. На сервере внесите изменение в конфигурационный файл
+/etc/fail2ban/jail.d/customisation.local, добавив в раздел по умолчанию
+игнорирование адреса клиента:
+[DEFAULT]
+bantime = 3600
+ignoreip = 127.0.0.1/8 <ip-адрес клиента>
+(вместо <ip-адрес клиента> укажите конкретный адрес). 
 
-![](image/2.10.jpg){#fig-210 width=70%}
+9. Перезапустите fail2ban.  
 
-##
+10. Посмотрите журнал событий:
+tail -f /var/log/fail2ban.log 
 
-([рис. @fig-031]).
+11. Вновь попытайтесь войти с клиента на сервер с неправильным паролем и посмот-
+рите статус защиты SSH. ([рис. @fig-211]).
 
-![](image/3.1.jpg){#fig-031 width=70%}
+![Попыталась войти с клиента](image/2.11.jpg){#fig-211 width=70%}
 
-([рис. @fig-032]).
+## Внесение изменений в настройки внутреннего
+окружения виртуальных машин
 
-![](image/3.2.jpg){#fig-032 width=70%}
+1. На виртуальной машине server перейдите в каталог для внесения изменений
+в настройки внутреннего окружения /vagrant/provision/server/, создайте в нём
+каталог protect, в который поместите в соответствующие подкаталоги конфигура-
+ционные файлы:
+cd /vagrant/provision/server
+mkdir -p /vagrant/provision/server/protect/etc/fail2ban/jail.d
+cp -R /etc/fail2ban/jail.d/customisation.local
+/vagrant/provision/server/protect/etc/fail2ban/jail.d/ ([рис. @fig-031]).
 
-([рис. @fig-033]).
+![На вм перешла в каталог](image/3.1.jpg){#fig-031 width=70%}
 
-![](image/3.3.jpg){#fig-033 width=70%}
+2. В каталоге /vagrant/provision/server создайте исполняемый файл protect.sh:
+cd /vagrant/provision/server
+touch protect.sh
+chmod +x protect.sh
+Открыв его на редактирование, пропишите в нём следующий скрипт:
+#!/bin/bash
+echo "Provisioning script $0"
+echo "Install needed packages"
+dnf -y install fail2ban
+echo "Copy configuration files"
+cp -R /vagrant/provision/server/protect/etc/* /etc
+restorecon -vR /etc ([рис. @fig-032]).
 
-([рис. @fig-034]).
+![Создала исполняемый файл](image/3.2.jpg){#fig-032 width=70%}
 
-![](image/3.4.jpg){#fig-034 width=70%}
-
-([рис. @fig-035]).
-
-![](image/3.5.jpg){#fig-035 width=70%}
-
-([рис. @fig-036]).
-
-![](image/3.6.jpg){#fig-036 width=70%}
-
-([рис. @fig-037]).
-
-![](image/3.7.jpg){#fig-037 width=70%}
-
-([рис. @fig-038]).
-
-(image/3.8.jpg){#fig-038 width=70%}
-
-([рис. @fig-039]).
-
-![](image/3.9.jpg){#fig-039 width=70%}
-
-([рис. @fig-310]).
-
-![](image/3.10.jpg){#fig-310 width=70%}
-
-## 
-
-([рис. @fig-041]).
-
-![](image/4.1.jpg){#fig-041 width=70%}
-
-([рис. @fig-042]).
-
-![](image/42.jpg){#fig-042 width=70%}
-
-([рис. @fig-043]).
-
-![](image/4.3.jpg){#fig-043 width=70%}
-
-## 
-
-([рис. @fig-051]).
-
-![](image/5.1.jpg){#fig-051 width=70%}
-
-([рис. @fig-052]).
-
-![](image/52.jpg){#fig-052 width=70%}
-
-([рис. @fig-053]).
-
-![](image/5.3.jpg){#fig-053 width=70%}
+3. echo "Start fail2ban service"
+systemctl enable fail2ban
+systemctl start fail2ban
+Для отработки созданного скрипта во время загрузки виртуальной машины server
+в конфигурационном файле Vagrantfile необходимо добавить в соответствующем
+разделе конфигураций для сервера  
 
 # Выводы
 
-
+В ходе лабораторной работы, я получила навыки работы с программным средством Fail2ban для обеспечения базовой защиты от атак типа «brute force».
 
 # Список литературы{.unnumbered}
+
+1. Сайт Fail2ban. — URL: https://www.fail2ban.org (visited on 09/13/2021).
 
 ::: {#refs}
 :::
